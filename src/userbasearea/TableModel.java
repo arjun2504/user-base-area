@@ -15,12 +15,22 @@ import userbasearea.TableDataModel;
 public class TableModel extends AbstractTableModel {
     
     private Object data[][];
-    private String columnNames[] = { "ID","First Name","Last Name","Sex","Position","Company","DOB" };
+    private String columnNames[] = { "User ID","First Name","Last Name","Sex","Position","Company","DOB" };
+    public String originalColumnNames[] = { "user_id","first_name", "last_name", "gender", "position", "company", "dob"};
     private TableDataModel tdm;
+    private String role;
     
-    public TableModel() throws ClassNotFoundException, SQLException {
+    public TableModel(String user_role) throws ClassNotFoundException, SQLException {
         tdm = new TableDataModel();
-        data = tdm.getAllData();
+        data = tdm.getAllData("");
+        role = user_role;
+        //String[] originalColumnNames = tdm.ColumnNames;
+    }
+    
+    public TableModel(String user_role, String username) throws ClassNotFoundException, SQLException {
+        tdm = new TableDataModel();
+        data = tdm.getAllData(username);
+        role = user_role;
     }
     
     public String getColumnName(int col) {
@@ -47,7 +57,10 @@ public class TableModel extends AbstractTableModel {
     }
     
     public boolean isCellEditable(int row, int col) {
-        if(col < 1) return false; else return true;
+        if(col < 1 || role.equals("user"))
+            return false;
+        else
+            return true;
     }
     
     public void setValueAt(Object value, int row, int col) {

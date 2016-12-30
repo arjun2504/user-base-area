@@ -6,6 +6,7 @@
 package userbasearea;
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import javax.swing.table.AbstractTableModel;
@@ -20,16 +21,47 @@ public class TableDataModel {
     private Connection con;
     private int count = 0;
     Object data[][];
+    private int ColumnCount;
+    public String ColumnNames[];
+    
     
     public TableDataModel() throws ClassNotFoundException, SQLException {
         //initializing connection to database
         con = new MySqlConn().dbConnection();
     }
     
-    public Object[][] getAllData() throws SQLException {
-        query = "SELECT * FROM details";
+    
+    
+    public void setColumnNames(ResultSet rs) throws SQLException {
+        ResultSetMetaData metaData = rs.getMetaData();
+        ColumnCount = metaData.getColumnCount();
+        ColumnNames = new String[ColumnCount];
+        int count = 1;
+        while(count <= ColumnCount) {
+            ColumnNames[count - 1] = metaData.getColumnName(count);
+            count++;
+        }
+    }
+    
+    public void updateChanges(int id, String columnName, String newValue) throws SQLException {
+        query = "UPDATE details SET " + columnName + " = '" + newValue + "' WHERE user_id = " + id;
+        System.out.println(query);
+        Statement st = con.createStatement();
+        st.executeUpdate(query);
+    }
+    
+    public Object[][] getAllData(String username) throws SQLException {
+        
+        if(username.equals("")) {
+            query = "SELECT * FROM details";
+        }
+        else {
+            query = "SELECT * FROM details WHERE user_id IN (SELECT id FROM users WHERE username = '" + username + "')";
+        }
+        
         Statement st = con.createStatement();
         ResultSet rs = st.executeQuery(query);
+        setColumnNames(rs);
         int totalData = getDataCount(rs);
         data = new Object[totalData][7];
         
@@ -37,7 +69,7 @@ public class TableDataModel {
         int i = 0;
         while(rs.next()) {
             
-            data[i][0] = rs.getString("id");
+            data[i][0] = rs.getString("user_id");
             data[i][1] = rs.getString("first_name");
             data[i][2] = rs.getString("last_name");
             data[i][3] = rs.getString("gender");
@@ -58,7 +90,7 @@ public class TableDataModel {
         while(rs.previous());
         return count;
     }
-    
+   
     public int getRowCount() {
         return count;
     }

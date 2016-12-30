@@ -6,14 +6,19 @@
 package userbasearea;
 
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.*;
 import javax.swing.border.Border;
 import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
+import javax.swing.table.DefaultTableModel;
 import userbasearea.MySqlConn;
 import userbasearea.TableDataModel;
 /**
@@ -34,11 +39,14 @@ public class AdminArea {
     private String windowTitle = "";
     private JTable viewTable;
     private JScrollPane scrolling;
+    private String columnNames[];
+    private String role;
     
-    public AdminArea(int user) throws ClassNotFoundException, SQLException {
+    public AdminArea(int user, String user_role) throws ClassNotFoundException, SQLException {
         //initializing database
         con = new MySqlConn().dbConnection();
         userId = user;
+        role = user_role;
         createWindow();
     }
     
@@ -86,7 +94,7 @@ public class AdminArea {
         while(rs.next()) {
             username = rs.getString(1);
         }
-        windowTitle = "Welcome, " + username;
+        windowTitle = "Welcome, " + username + " (" + role + ")";
         welcomeText = new JLabel("Choose a username: ", SwingConstants.CENTER);
         welcomeText.setAlignmentX(Component.LEFT_ALIGNMENT);
     }
@@ -97,6 +105,7 @@ public class AdminArea {
         query = "SELECT id, username FROM users WHERE role = 'user'";
         Statement st = con.createStatement();
         ResultSet rs = st.executeQuery(query);
+        usernameSelect.addItem("ALL USERS");
         while(rs.next()) {
             int id = rs.getInt(1);
             String uname = rs.getString(2);
@@ -106,16 +115,44 @@ public class AdminArea {
         usernameSelect.setAlignmentX(Component.RIGHT_ALIGNMENT);
         
         retrieveBtn = new JButton("Filter");
+        retrieveBtn.addActionListener(new filterRows());
         retrieveBtn.setAlignmentX(Component.RIGHT_ALIGNMENT);
     }
     
+    private class filterRows implements ActionListener {
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            
+            if(e.getActionCommand().equals("Filter")) {
+                Object uname = usernameSelect.getSelectedItem();
+                String username = uname.toString();
+                try {
+                    TableModel tm;
+                    if(username.equals("ALL USERS"))
+                        tm = new TableModel(role);
+                    else
+                        tm = new TableModel(role, username);
+                    viewTable.setModel(tm);
+                    viewTable.getModel().addTableModelListener(new updateMyTable());
+                    tm.fireTableDataChanged();
+                    
+                } catch (ClassNotFoundException | SQLException ex) {
+                    Logger.getLogger(AdminArea.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+            
+        }
+        
+    }
     private void prepareTabbedPanes() throws ClassNotFoundException, SQLException {
         tabPane = new JTabbedPane();
         viewPanel = new JPanel();
         
-        
-        viewTable = new JTable(new TableModel());
+        TableModel myTableModel = new TableModel(role);
+        viewTable = new JTable(myTableModel);
         viewTable.getModel().addTableModelListener(new updateMyTable());
+        columnNames = myTableModel.originalColumnNames;
         
         scrolling = new JScrollPane(viewTable);
         viewPanel.add(scrolling);
@@ -135,8 +172,16 @@ public class AdminArea {
             Object data = myTM.getValueAt(row, col);
             Object id = myTM.getValueAt(row, 0);
             
-            System.out.println(data.toString());
-            System.out.println(id.toString());
+            String dbColName = columnNames[col];
+            String newValue = data.toString();
+            int user_id = Integer.parseInt(id.toString());
+            
+            try {
+                TableDataModel tdm = new TableDataModel();
+                tdm.updateChanges(user_id, dbColName, newValue);
+            } catch (ClassNotFoundException | SQLException ex) {
+                Logger.getLogger(AdminArea.class.getName()).log(Level.SEVERE, null, ex);
+            }
         }
         
     }

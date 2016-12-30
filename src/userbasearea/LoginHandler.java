@@ -45,12 +45,6 @@ public class LoginHandler {
     
     public void authenticateUser() throws ClassNotFoundException, SQLException {
         System.out.println(this.role);
-        if(this.role.equals("user")) {
-            //create user object
-        }
-        else if(this.role.equals("admin")) {
-            //create admin object
-            new AdminArea(userId);
-        }
+        new AdminArea(userId, role);
     }
 }
